@@ -1,76 +1,102 @@
-import paho.mqtt.client as mqttClient
+import stomp
 import time
-import ssl
 import mysql.connector.pooling
 import json
 from flask import Flask
 from project import app
 
 
-broker_address= app.config['MQ_BROKER_ADDRESS'] # No ssl://
+broker_address = app.config['MQ_BROKER_ADDRESS']  # No ssl://
 port = app.config['MQ_PORT']
 user = app.config['MQ_USER']
 password = app.config['MQ_PASSWORD']
 CLIENT_NAME = app.config['MQ_CLIENT_NAME']
 
 mySqlConfig = {
-  'user': app.config['DB_USER'],
-  'password': app.config['DB_PASSWORD'],
-  'host': app.config['DB_HOST'],
-  'database': app.config['DB_DATABASE'],
-  'port': app.config['DB_PORT'],
-  'raise_on_warnings': True
+    'user': app.config['DB_USER'],
+    'password': app.config['DB_PASSWORD'],
+    'host': app.config['DB_HOST'],
+    'database': app.config['DB_DATABASE'],
+    'port': app.config['DB_PORT'],
+    'raise_on_warnings': True
 }
 
 add_user_information = ("INSERT INTO user_information "
-              "(user_id, activity, description, create_timestamp) "
-              "VALUES (%(user_id)s, %(activity)s, %(description)s, %(create_timestamp)s)")
+                        "(user_id, activity, description, create_timestamp) "
+                        "VALUES (%(user_id)s, %(activity)s, %(description)s, %(create_timestamp)s)")
 
 add_video_information = ("INSERT INTO video_information "
-              "(user_id, video_id, activity, description, create_timestamp) "
-              "VALUES (%(user_id)s, %(video_id)s, %(activity)s, %(description)s, %(create_timestamp)s)")
+                         "(user_id, video_id, activity, description, create_timestamp) "
+                         "VALUES (%(user_id)s, %(video_id)s, %(activity)s, %(description)s, %(create_timestamp)s)")
 
-def on_connect(client, userdata, flags, rc):        
-    if rc == 0:
-        print("Connected to broker")
-        global Connected                #Use global variable
-        #Connected = True                #Signal connection
-        client.subscribe("user_information")
-        client.subscribe("video_information")
-    else:
-        print("Connection failed")
 
-def on_message(client, userdata, msg):
-    print(msg.topic+" "+str(msg.payload))
-    payload = json.loads(msg.payload)
-    payload_table  = ''
-    if(msg.topic == 'user_information'):
-        payload_table = add_user_information
-    else:
-        payload_table = add_video_information
-    cnx = cnxPool.get_connection()
-    cursor = cnx.cursor()
-    cursor.execute(payload_table, payload)
-    cnx.commit()
-    cursor.close()
-    cnx.close()
-    
-    
 def connect_to_db():
-    return mysql.connector.pooling.MySQLConnectionPool(pool_name = "catoRawFeedPool", pool_size = 3, **mySqlConfig)
+    return mysql.connector.pooling.MySQLConnectionPool(pool_name="catoRawFeedPool", pool_size=3, **mySqlConfig)
 
-context = ssl.create_default_context()
-Connected = False
 
-client = mqttClient.Client(CLIENT_NAME) #create new instance
-client.username_pw_set(user, password=password) #set username and password
-client.on_connect=on_connect
-client.on_message=on_message
-client.tls_set_context(context=context)
-client.connect(broker_address, port=int(port))
-client.loop_start()
+def connect_and_subscribe(destination, listener, id):
+    conn = stomp.Connection([("206.189.139.37", 30672)],
+                            heartbeats=(4000, 4000))
+
+    conn.set_listener('', listener())
+    conn.connect('guest', 'guest', wait=True)
+    conn.subscribe(destination=destination, id=id,
+                   ack='auto')
+    return conn
+
+
+class UserEventsConsumer(stomp.ConnectionListener):
+    def on_connected(self, frame):
+        print("Broker Connected Successfully")
+
+    def on_error(self, frame):
+        print('Error: "%s"' % frame.body)
+
+    def on_disconnected(self):
+        print('/queue/user Disconnected, trying to reconnect')
+        connect_and_subscribe("/queue/user", VideoEventsConsumer, 1)
+
+    def on_message(self, frame):
+        print(frame.body)
+        payload = json.loads(frame.body)
+        payload_table = add_user_information
+
+        cnx = cnxPool.get_connection()
+        cursor = cnx.cursor()
+        cursor.execute(payload_table, payload)
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+
+
+class VideoEventsConsumer(stomp.ConnectionListener):
+    def on_connected(self, frame):
+        print("Broker Connected Successfully")
+
+    def on_error(self, frame):
+        print('Error: "%s"' % frame.body)
+
+    def on_disconnected(self):
+        print('/queue/video Disconnected, trying to reconnect')
+        connect_and_subscribe("/queue/video", VideoEventsConsumer, 2)
+
+    def on_message(self, frame):
+        print(frame.body)
+        payload = json.loads(frame.body)
+        payload_table = add_video_information
+
+        cnx = cnxPool.get_connection()
+        cursor = cnx.cursor()
+        cursor.execute(payload_table, payload)
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+
+
+userEventsConn = connect_and_subscribe("/queue/user", UserEventsConsumer, 1)
+videoEventsConn = connect_and_subscribe("/queue/video", VideoEventsConsumer, 2)
 
 cnxPool = connect_to_db()
 
-while True:
-    time.sleep(1)
+while (userEventsConn.is_connected() and videoEventsConn.is_connected()):
+    time.sleep(2)
