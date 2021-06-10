@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mq-consumer
+spec:
+  selector:
+    app: mq-consumer
+  ports:
+    - protocol: "TCP"
+      port: 5919
+      targetPort: 5919
+      nodePort: 30442 # (30000-32767 valid)
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mq-consumer
+spec:
+  selector:
+    matchLabels:
+      app: mq-consumer
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mq-consumer
+    spec:
+      containers:
+        - name: mq-consumer
+          image: catotv/mq-consumer
+          ports:
+            - containerPort: 5919
+              protocol: "TCP"
