@@ -1,0 +1,4 @@
+stomp.py
+mysql-connector-python
+python-etcd
+flask

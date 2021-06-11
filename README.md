@@ -1,2 +1,4 @@
 # mq-consumer
-test
+
+MQ Consumer Service
+
