@@ -2,7 +2,6 @@ import stomp
 import time
 import mysql.connector.pooling
 import json
-from flask import Flask
 from project import app
 
 
