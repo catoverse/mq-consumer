@@ -6,11 +6,10 @@ from flask import Flask
 from project import app
 
 
-broker_address = app.config['MQ_BROKER_ADDRESS']  # No ssl://
-port = app.config['MQ_PORT']
-user = app.config['MQ_USER']
-password = app.config['MQ_PASSWORD']
-CLIENT_NAME = app.config['MQ_CLIENT_NAME']
+mq_broker_address = app.config['MQ_BROKER_ADDRESS']  # No ssl://
+mq_port = app.config['MQ_PORT']
+mq_user = app.config['MQ_USER']
+mq_password = app.config['MQ_PASSWORD']
 
 mySqlConfig = {
     'user': app.config['DB_USER'],
@@ -35,11 +34,11 @@ def connect_to_db():
 
 
 def connect_and_subscribe(destination, listener, id):
-    conn = stomp.Connection([("206.189.139.37", 30672)],
+    conn = stomp.Connection([(mq_broker_address, mq_port)],
                             heartbeats=(4000, 4000))
 
     conn.set_listener('', listener())
-    conn.connect('guest', 'guest', wait=True)
+    conn.connect(mq_user, mq_password, wait=True)
     conn.subscribe(destination=destination, id=id,
                    ack='auto')
     return conn
@@ -47,7 +46,7 @@ def connect_and_subscribe(destination, listener, id):
 
 class UserEventsConsumer(stomp.ConnectionListener):
     def on_connected(self, frame):
-        print("Broker Connected Successfully")
+        print("User Events queue Connected Successfully")
 
     def on_error(self, frame):
         print('Error: "%s"' % frame.body)
@@ -71,7 +70,7 @@ class UserEventsConsumer(stomp.ConnectionListener):
 
 class VideoEventsConsumer(stomp.ConnectionListener):
     def on_connected(self, frame):
-        print("Broker Connected Successfully")
+        print("Video Events queue Connected Successfully")
 
     def on_error(self, frame):
         print('Error: "%s"' % frame.body)

@@ -2,19 +2,21 @@ class Config(object):
     DEBUG = False
     TESTING = False
 
+
 class DevelopmentConfig(Config):
     DEBUG = True
     DEVELOPMENT = True
-    DB_USER = 'cato_feed_app'
-    DB_PASSWORD = 'Ciba$QqmRaLF2'
-    DB_HOST = 'catofeedinstance.cofz0nxilsrq.ap-south-1.rds.amazonaws.com'
-    DB_DATABASE = 'cato_raw_feed'
+    DB_USER = 'mqconsumer'
+    DB_PASSWORD = 'catotothemoon'
+    DB_HOST = '167.71.237.153'
+    DB_DATABASE = 'raw_events'
     DB_PORT = '3306'
-    MQ_BROKER_ADDRESS = 'b-d30b2451-4e27-40bf-b4d8-8341beaddb72-1.mq.ap-south-1.amazonaws.com'
-    MQ_PORT = '8883'
-    MQ_USER = 'cato'
-    MQ_PASSWORD = 'DLL7LjJFiub4NSA'
-    MQ_CLIENT_NAME = 'MySQL-Writer'
+
+    MQ_BROKER_ADDRESS = "206.189.139.37"
+    MQ_PORT = "30672"
+    MQ_USER = "guest"
+    MQ_PASSWORD = "guest"
+
 
 class ProductionConfig(Config):
     DEBUG = False
