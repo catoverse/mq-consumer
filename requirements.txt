@@ -1,4 +1,4 @@
 stomp.py
-mysql-connector
+mysql-connector-python
 python-etcd
 flask
