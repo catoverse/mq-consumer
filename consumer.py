@@ -52,10 +52,10 @@ class UserEventsConsumer(stomp.ConnectionListener):
 
     def on_disconnected(self):
         print('/queue/user Disconnected, trying to reconnect')
-        connect_and_subscribe("/queue/user", VideoEventsConsumer, 1)
+        connect_and_subscribe("/queue/user", UserEventsConsumer, 1)
 
     def on_message(self, frame):
-        print("message received",frame.body)
+        print("Message Received:", frame.body)
         payload = json.loads(frame.body)
         payload_table = add_user_information
         cnx = cnxPool.get_connection()
@@ -78,7 +78,7 @@ class VideoEventsConsumer(stomp.ConnectionListener):
         connect_and_subscribe("/queue/video", VideoEventsConsumer, 2)
 
     def on_message(self, frame):
-        print(frame.body)
+        print("Message Received:", frame.body)
         payload = json.loads(frame.body)
         payload_table = add_video_information
 
@@ -94,7 +94,6 @@ cnxPool = connect_to_db()
 
 userEventsConn = connect_and_subscribe("/queue/user", UserEventsConsumer, 1)
 videoEventsConn = connect_and_subscribe("/queue/video", VideoEventsConsumer, 2)
-
 
 
 while (userEventsConn.is_connected() and videoEventsConn.is_connected()):
