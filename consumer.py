@@ -20,12 +20,8 @@ mySqlConfig = {
 }
 
 add_user_information = ("INSERT INTO user_information "
-                        "(user_id, activity, description, create_timestamp) "
-                        "VALUES (%(user_id)s, %(activity)s, %(description)s, %(create_timestamp)s)")
-
-add_video_information = ("INSERT INTO video_information "
-                         "(user_id, video_id, activity, description, create_timestamp) "
-                         "VALUES (%(user_id)s, %(video_id)s, %(activity)s, %(description)s, %(create_timestamp)s)")
+                        "(user_id, video_id, video_duration, duration_watched, session_duration, timestamp, description, event) "
+                        "VALUES (%(user_id)s, %(video_id)s, %(video_duration)s, %(duration_watched)s, %(session_duration)s, %(timestamp)s, %(description)s, %(event)s)")
 
 
 def connect_to_db():
@@ -66,35 +62,10 @@ class UserEventsConsumer(stomp.ConnectionListener):
         cnx.close()
 
 
-class VideoEventsConsumer(stomp.ConnectionListener):
-    def on_connected(self, frame):
-        print("Video Events queue Connected Successfully")
-
-    def on_error(self, frame):
-        print('Error: "%s"' % frame.body)
-
-    def on_disconnected(self):
-        print('/queue/video Disconnected, trying to reconnect')
-        connect_and_subscribe("/queue/video", VideoEventsConsumer, 2)
-
-    def on_message(self, frame):
-        print("Message Received:", frame.body)
-        payload = json.loads(frame.body)
-        payload_table = add_video_information
-
-        cnx = cnxPool.get_connection()
-        cursor = cnx.cursor()
-        cursor.execute(payload_table, payload)
-        cnx.commit()
-        cursor.close()
-        cnx.close()
-
-
 cnxPool = connect_to_db()
 
 userEventsConn = connect_and_subscribe("/queue/user", UserEventsConsumer, 1)
-videoEventsConn = connect_and_subscribe("/queue/video", VideoEventsConsumer, 2)
 
 
-while (userEventsConn.is_connected() and videoEventsConn.is_connected()):
+while (userEventsConn.is_connected()):
     time.sleep(2)
